@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#123c35" />
+    <title>Puzzle Master — Match 3 Puzzle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="styles.css" rel="stylesheet" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Puzzle Master home">
+          <span class="brand-mark" aria-hidden="true">✦</span>
+          <span>PUZZLE <span class="brand-light">MASTER</span></span>
+        </a>
+        <span class="location-pill"><span class="live-dot"></span> ABEOKUTA, OGUN</span>
+      </header>
+
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-line"></span> A PUZZLE RESCUE ADVENTURE</p>
+          <h1>STOP THE<br /><span>SHADOW BEAST</span></h1>
+          <p class="hero-description">A creature is closing in on Ayo. Match treasures to stop it before it gets there!</p>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="sun"></div>
+          <div class="hill hill-back"></div>
+          <div class="hill hill-front"></div>
+          <div class="rock rock-one"></div>
+          <div class="rock rock-two"></div>
+          <div class="city-silhouette"><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="hero-caption">THE GATEWAY TO<br /><strong>NEW POSSIBILITIES</strong></div>
+        </div>
+      </section>
+
+      <section class="puzzle" aria-labelledby="puzzle-title">
+        <div class="puzzle-heading">
+          <div>
+            <p class="eyebrow section-eyebrow" id="stage-label">STAGE 1 OF 3 · VERY HARD</p>
+            <h2 id="puzzle-title">Drive back the creature</h2>
+          </div>
+          <button class="restart-button" id="restart" type="button"><span aria-hidden="true">↻</span> NEW GAME</button>
+        </div>
+
+        <div class="mission">
+          <span class="mission-icon" aria-hidden="true">✦</span>
+          <div class="mission-copy">
+            <p class="eyebrow">THE CHALLENGE</p>
+            <strong id="mission-title">Stop the Shadow Beast</strong>
+            <span id="mission-description">Score points and collect the requested gems to protect Ayo.</span>
+          </div>
+          <div class="mission-progress">
+            <span id="goal-label">0 / 1,000</span>
+            <div class="mission-track" role="progressbar" aria-label="Score goal" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="0">
+              <span id="goal-fill"></span>
+            </div>
+          </div>
+        </div>
+        <div class="collection-goal">
+          <span class="collection-icon" id="collection-icon" aria-hidden="true">🍃</span>
+          <span><small>GEMS COLLECTED</small><strong id="collection-value">0 / 6</strong></span>
+        </div>
+
+        <section class="rescue-card" id="rescue-card" aria-labelledby="rescue-title">
+          <div class="rescue-scene" aria-hidden="true">
+            <span class="scene-sun"></span>
+            <span class="scene-monster">👹</span>
+            <span class="scene-person">🧑🏾</span>
+            <span class="scene-spark">✦</span>
+          </div>
+          <div class="rescue-copy">
+            <p class="eyebrow" id="rescue-status">DANGER · THE BEAST IS CHASING AYO</p>
+            <h3 id="rescue-title">Ayo needs your help!</h3>
+            <p id="rescue-description">The Shadow Beast is chasing Ayo! Open the puzzle and drive it away before it catches them.</p>
+          </div>
+          <button class="rescue-button" id="open-puzzle" type="button">OPEN PUZZLE <span aria-hidden="true">→</span></button>
+          <button class="rescue-button" id="rescue-button" type="button" hidden disabled>RESCUE AYO <span aria-hidden="true">→</span></button>
+        </section>
+
+        <div class="puzzle-backdrop" id="puzzle-modal" hidden>
+          <section class="puzzle-panel" role="dialog" aria-modal="true" aria-labelledby="modal-puzzle-title">
+            <div class="puzzle-modal-heading">
+              <div>
+                <p class="eyebrow section-eyebrow" id="modal-stage-label">STAGE 1 OF 3 · VERY HARD</p>
+                <h2 id="modal-puzzle-title">Save Ayo!</h2>
+              </div>
+              <button class="puzzle-close" id="close-puzzle" type="button" aria-label="Close puzzle">×</button>
+            </div>
+            <div class="score-row" aria-label="Game stats">
+              <div class="score-card">
+                <span class="score-icon" aria-hidden="true">✧</span>
+                <span><small>SCORE</small><strong id="score-value">0</strong></span>
+              </div>
+              <div class="score-card moves-card">
+                <span class="score-icon" aria-hidden="true">↔</span>
+                <span><small>MOVES LEFT</small><strong id="moves-value">14</strong></span>
+              </div>
+              <div class="score-card collect-card">
+                <span class="score-icon" id="collect-card-icon" aria-hidden="true">🍃</span>
+                <span><small>GEMS</small><strong id="collect-card-value">0 / 6</strong></span>
+              </div>
+            </div>
+
+            <div class="board-wrap">
+              <div class="board-frame">
+                <div class="game-board" id="game-board" role="group" aria-label="Puzzle board"></div>
+              </div>
+              <p class="board-hint">Match 4 for a line blast · Match 5 for a burst · Collect the stage gems!</p>
+            </div>
+            <div class="powerup-legend" aria-label="Special tile rules">
+              <span><b class="legend-line">↔</b> Match 4: line blast</span>
+              <span><b class="legend-burst">✹</b> Match 5: burst</span>
+              <span><b class="legend-chain">×2</b> Cascades: combo bonus</span>
+            </div>
+            <div class="game-controls modal-game-controls">
+              <span id="puzzle-status" role="status" aria-live="polite">Make a match to push the Shadow Beast back!</span>
+            </div>
+          </section>
+        </div>
+
+        <div class="game-controls">
+          <span id="status-message" role="status" aria-live="polite">Ayo needs your help! Open the puzzle and stop the Shadow Beast.</span>
+        </div>
+      </section>
+
+      <footer><span>PUZZLE MASTER</span><span>Match, explore, and enjoy the journey. <b>✦</b></span></footer>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
