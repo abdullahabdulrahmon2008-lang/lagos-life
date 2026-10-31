@@ -23,17 +23,18 @@
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow"><span class="eyebrow-line"></span> A PUZZLE RESCUE ADVENTURE</p>
-          <h1>STOP THE<br /><span>SHADOW BEAST</span></h1>
-          <p class="hero-description">A creature is closing in on Ayo. Match treasures to stop it before it gets there!</p>
+          <h1>SAVE AYO!<br /><span>SHOO IT HOME!</span></h1>
+          <p class="hero-description">A tiny shadow puff is chasing Ayo. Match sparkly treasures and send it home!</p>
         </div>
         <div class="hero-art" aria-hidden="true">
+          <span class="hero-creature">👾</span>
           <div class="sun"></div>
           <div class="hill hill-back"></div>
           <div class="hill hill-front"></div>
           <div class="rock rock-one"></div>
           <div class="rock rock-two"></div>
           <div class="city-silhouette"><span></span><span></span><span></span><span></span><span></span></div>
-          <div class="hero-caption">THE GATEWAY TO<br /><strong>NEW POSSIBILITIES</strong></div>
+          <div class="hero-caption">A LITTLE MAGIC<br /><strong>A LOT OF HEART</strong></div>
         </div>
       </section>
 
@@ -68,7 +69,7 @@
         <section class="rescue-card" id="rescue-card" aria-labelledby="rescue-title">
           <div class="rescue-scene" aria-hidden="true">
             <span class="scene-sun"></span>
-            <span class="scene-monster">👹</span>
+            <span class="scene-monster">👾</span>
             <span class="scene-person">🧑🏾</span>
             <span class="scene-spark">✦</span>
           </div>
@@ -88,7 +89,10 @@
                 <p class="eyebrow section-eyebrow" id="modal-stage-label">STAGE 1 OF 3 · VERY HARD</p>
                 <h2 id="modal-puzzle-title">Save Ayo!</h2>
               </div>
-              <button class="puzzle-close" id="close-puzzle" type="button" aria-label="Close puzzle">×</button>
+              <div class="puzzle-heading-actions">
+                <button class="hint-button" id="hint-button" type="button" aria-label="Show a suggested move" title="Show a suggested move"><span aria-hidden="true">✦</span> HINT</button>
+                <button class="puzzle-close" id="close-puzzle" type="button" aria-label="Close puzzle">×</button>
+              </div>
             </div>
             <div class="score-row" aria-label="Game stats">
               <div class="score-card">
@@ -106,6 +110,7 @@
             </div>
 
             <div class="board-wrap">
+              <span class="combo-effect" id="combo-effect" aria-hidden="true"></span>
               <div class="board-frame">
                 <div class="game-board" id="game-board" role="group" aria-label="Puzzle board"></div>
               </div>

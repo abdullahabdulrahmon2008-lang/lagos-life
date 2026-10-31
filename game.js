@@ -24,6 +24,8 @@ const collectionValue = document.querySelector("#collection-value");
 const collectionIcon = document.querySelector("#collection-icon");
 const collectCardIcon = document.querySelector("#collect-card-icon");
 const collectCardValue = document.querySelector("#collect-card-value");
+const scoreCardElement = scoreElement.closest(".score-card");
+const comboEffect = document.querySelector("#combo-effect");
 const rescueCard = document.querySelector("#rescue-card");
 const rescueButton = document.querySelector("#rescue-button");
 const rescueStatus = document.querySelector("#rescue-status");
@@ -42,6 +44,13 @@ let resolving = false;
 let gameOver = false;
 let stageComplete = false;
 let ayoRescued = false;
+let gameRound = 0;
+let hintedIndices = new Set();
+let hintTimer = null;
+let clearingIndices = new Set();
+let scoreEffectTimer = null;
+let comboEffectTimer = null;
+let audioContext = null;
 
 function currentStage() {
   return STAGES[stageIndex];
@@ -50,6 +59,93 @@ function currentStage() {
 function setStatus(message, puzzleMessage = message) {
   statusElement.textContent = message;
   puzzleStatus.textContent = puzzleMessage;
+}
+
+function playScoreEffect() {
+  window.clearTimeout(scoreEffectTimer);
+  scoreCardElement.classList.remove("is-scoring");
+  void scoreCardElement.offsetWidth;
+  scoreCardElement.classList.add("is-scoring");
+  scoreEffectTimer = window.setTimeout(() => scoreCardElement.classList.remove("is-scoring"), 520);
+}
+
+function playMatchPop(chain, tileCount) {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+
+  try {
+    audioContext ??= new AudioContext();
+    if (audioContext.state === "suspended") {
+      audioContext.resume().catch(() => {});
+    }
+
+    const now = audioContext.currentTime;
+    const pitch = 420 + Math.min(chain - 1, 4) * 90 + Math.min(tileCount, 10) * 8;
+    const oscillator = audioContext.createOscillator();
+    const toneGain = audioContext.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(pitch, now);
+    oscillator.frequency.exponentialRampToValueAtTime(125, now + 0.13);
+    toneGain.gain.setValueAtTime(0.0001, now);
+    toneGain.gain.exponentialRampToValueAtTime(0.13, now + 0.008);
+    toneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+    oscillator.connect(toneGain);
+    toneGain.connect(audioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.16);
+
+    const thump = audioContext.createOscillator();
+    const thumpGain = audioContext.createGain();
+    thump.type = "sine";
+    thump.frequency.setValueAtTime(175, now);
+    thump.frequency.exponentialRampToValueAtTime(65, now + 0.09);
+    thumpGain.gain.setValueAtTime(0.0001, now);
+    thumpGain.gain.exponentialRampToValueAtTime(0.09, now + 0.004);
+    thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+    thump.connect(thumpGain);
+    thumpGain.connect(audioContext.destination);
+    thump.start(now);
+    thump.stop(now + 0.11);
+
+    const noiseLength = Math.floor(audioContext.sampleRate * 0.045);
+    const noiseBuffer = audioContext.createBuffer(1, noiseLength, audioContext.sampleRate);
+    const noiseSamples = noiseBuffer.getChannelData(0);
+    for (let index = 0; index < noiseLength; index += 1) {
+      noiseSamples[index] = (Math.random() * 2 - 1) * (1 - index / noiseLength);
+    }
+    const noise = audioContext.createBufferSource();
+    const noiseFilter = audioContext.createBiquadFilter();
+    const noiseGain = audioContext.createGain();
+    noise.buffer = noiseBuffer;
+    noiseFilter.type = "lowpass";
+    noiseFilter.frequency.setValueAtTime(2100, now);
+    noiseGain.gain.setValueAtTime(0.055, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(audioContext.destination);
+    noise.start(now);
+    noise.stop(now + 0.04);
+  } catch {
+    audioContext = null;
+  }
+}
+
+function playComboEffect(chain) {
+  window.clearTimeout(comboEffectTimer);
+  comboEffect.textContent = `COMBO ×${chain}!`;
+  comboEffect.classList.remove("is-visible");
+  void comboEffect.offsetWidth;
+  comboEffect.classList.add("is-visible");
+  comboEffectTimer = window.setTimeout(() => comboEffect.classList.remove("is-visible"), 1000);
+}
+
+function resetPlayEffects() {
+  clearingIndices.clear();
+  window.clearTimeout(scoreEffectTimer);
+  window.clearTimeout(comboEffectTimer);
+  scoreCardElement.classList.remove("is-scoring");
+  comboEffect.classList.remove("is-visible");
 }
 
 function tileAt(row, column) {
@@ -139,13 +235,40 @@ function hasAvailableMove() {
     const column = index % SIZE;
     for (const neighbor of [column < SIZE - 1 ? index + 1 : -1, row < SIZE - 1 ? index + SIZE : -1]) {
       if (neighbor < 0) continue;
+      const activatesPower = specials.has(index) || specials.has(neighbor);
       [board[index], board[neighbor]] = [board[neighbor], board[index]];
       const createsMatch = findMatches().size > 0;
       [board[index], board[neighbor]] = [board[neighbor], board[index]];
-      if (createsMatch) return true;
+      if (createsMatch || activatesPower) return true;
     }
   }
   return false;
+}
+
+function findHintMove() {
+  let bestMove = null;
+  let bestValue = -1;
+
+  for (let index = 0; index < board.length; index += 1) {
+    const row = Math.floor(index / SIZE);
+    const column = index % SIZE;
+    for (const neighbor of [column < SIZE - 1 ? index + 1 : -1, row < SIZE - 1 ? index + SIZE : -1]) {
+      if (neighbor < 0) continue;
+      const activatesPower = specials.has(index) || specials.has(neighbor);
+      swapTilesAt(index, neighbor);
+      const matches = findMatches();
+      swapTilesAt(index, neighbor);
+      if (matches.size === 0 && !activatesPower) continue;
+
+      const targetMatches = [...matches].filter((matchIndex) => board[matchIndex] === currentStage().collectType).length;
+      const value = (activatesPower ? 1000 : 0) + targetMatches * 10 + matches.size;
+      if (value > bestValue) {
+        bestMove = [index, neighbor];
+        bestValue = value;
+      }
+    }
+  }
+  return bestMove;
 }
 
 function renderBoard() {
@@ -163,9 +286,16 @@ function renderBoard() {
     const button = document.createElement("button");
     button.type = "button";
     const power = specials.get(index);
-    button.className = `tile ${tile.className}${selectedIndex === index ? " is-selected" : ""}${power ? ` has-power power-${power}` : ""}`;
+    button.className = `tile ${tile.className}${selectedIndex === index ? " is-selected" : ""}${hintedIndices.has(index) ? " is-hinted" : ""}${clearingIndices.has(index) ? " is-clearing" : ""}${power ? ` has-power power-${power}` : ""}`;
     button.textContent = tile.symbol;
     button.setAttribute("aria-label", `${power ? `${power === "burst" ? "Burst" : "Line blast"} ${tile.name}` : tile.name}, row ${Math.floor(index / SIZE) + 1}, column ${(index % SIZE) + 1}`);
+    if (clearingIndices.has(index)) {
+      const sparkle = document.createElement("span");
+      sparkle.className = "clear-sparkle";
+      sparkle.textContent = "✦";
+      sparkle.setAttribute("aria-hidden", "true");
+      button.append(sparkle);
+    }
     if (power) {
       const indicator = document.createElement("span");
       indicator.className = "power-indicator";
@@ -226,6 +356,11 @@ function closePuzzle() {
 
 function selectTile(index) {
   if (resolving || gameOver) return;
+  if (hintedIndices.size > 0) {
+    window.clearTimeout(hintTimer);
+    hintTimer = null;
+    hintedIndices.clear();
+  }
   if (selectedIndex === null) {
     selectedIndex = index;
     renderBoard();
@@ -274,6 +409,28 @@ function swapTiles(first, second) {
   renderBoard();
   updateDisplay();
   resolveMatches(matches, activatedPower ? null : createPowerup(matches, first, second));
+}
+
+function showHint() {
+  if (resolving || gameOver) return;
+  const move = findHintMove();
+  if (!move) {
+    setStatus("No moves are available, so the treasures will be reshuffled.");
+    createBoard();
+    renderBoard();
+    return;
+  }
+
+  window.clearTimeout(hintTimer);
+  hintedIndices = new Set(move);
+  renderBoard();
+  const [first, second] = move;
+  setStatus(`Try swapping row ${Math.floor(first / SIZE) + 1}, column ${(first % SIZE) + 1} with row ${Math.floor(second / SIZE) + 1}, column ${(second % SIZE) + 1}.`);
+  hintTimer = window.setTimeout(() => {
+    hintedIndices.clear();
+    hintTimer = null;
+    renderBoard();
+  }, 1800);
 }
 
 function createPowerup(matches, first, second) {
@@ -357,6 +514,7 @@ function dropTiles() {
 }
 
 async function resolveMatches(initialMatches, powerup) {
+  const activeRound = gameRound;
   let chain = 0;
   let matches = initialMatches;
   let comboMessage = "";
@@ -372,13 +530,22 @@ async function resolveMatches(initialMatches, powerup) {
     const cleared = expandSpecialMatches(matches);
     score += cleared.size * 10 * chain;
     collected += [...cleared].filter((index) => board[index] === currentStage().collectType).length;
+    playMatchPop(chain, cleared.size);
+    clearingIndices = cleared;
+    updateDisplay();
+    renderBoard();
+    playScoreEffect();
+    if (chain > 1) playComboEffect(chain);
+    await new Promise((resolve) => window.setTimeout(resolve, 240));
+    if (activeRound !== gameRound) return;
     cleared.forEach((index) => {
       board[index] = null;
       specials.delete(index);
     });
-    updateDisplay();
+    clearingIndices.clear();
     renderBoard();
-    await new Promise((resolve) => window.setTimeout(resolve, 180));
+    await new Promise((resolve) => window.setTimeout(resolve, 70));
+    if (activeRound !== gameRound) return;
     dropTiles();
     renderBoard();
     matches = findMatches();
@@ -439,6 +606,11 @@ async function resolveMatches(initialMatches, powerup) {
 }
 
 function startNewGame() {
+  gameRound += 1;
+  resetPlayEffects();
+  window.clearTimeout(hintTimer);
+  hintTimer = null;
+  hintedIndices.clear();
   stageIndex = 0;
   score = 0;
   collected = 0;
@@ -465,6 +637,11 @@ function startNewGame() {
 
 function advanceStage() {
   if (!stageComplete || stageIndex >= STAGES.length - 1) return;
+  gameRound += 1;
+  resetPlayEffects();
+  window.clearTimeout(hintTimer);
+  hintTimer = null;
+  hintedIndices.clear();
   stageIndex += 1;
   score = 0;
   collected = 0;
@@ -488,6 +665,7 @@ function advanceStage() {
 }
 
 document.querySelector("#restart").addEventListener("click", startNewGame);
+document.querySelector("#hint-button").addEventListener("click", showHint);
 openPuzzleButton.addEventListener("click", openPuzzle);
 document.querySelector("#close-puzzle").addEventListener("click", closePuzzle);
 puzzleModal.addEventListener("click", (event) => {
